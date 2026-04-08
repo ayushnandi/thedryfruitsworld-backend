@@ -1,0 +1,41 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        default_schema: public
+
+server:
+  port: 8080
+
+app:
+  supabase:
+    jwt-secret: ${SUPABASE_JWT_SECRET}
+    project-url: ${SUPABASE_PROJECT_URL}
+    service-role-key: ${SUPABASE_SERVICE_ROLE_KEY}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  razorpay:
+    key-id: ${RAZORPAY_KEY_ID}
+    key-secret: ${RAZORPAY_KEY_SECRET}
+  free-shipping-threshold: 499
+
+logging:
+  level:
+    com.thedryfruitsworld: DEBUG
+    org.springframework.security: INFO
