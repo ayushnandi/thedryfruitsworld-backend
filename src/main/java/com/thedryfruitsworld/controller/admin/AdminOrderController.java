@@ -1,5 +1,6 @@
 package com.thedryfruitsworld.controller.admin;
 
+import com.thedryfruitsworld.dto.AdminOrderDetailDto;
 import com.thedryfruitsworld.dto.AdminOrderDto;
 import com.thedryfruitsworld.entity.Order;
 import com.thedryfruitsworld.exception.BadRequestException;
@@ -44,6 +45,17 @@ public class AdminOrderController {
                 : orderRepository.findAllByOrderByCreatedAtDesc(pageable);
 
         return ResponseEntity.ok(orders.map(AdminOrderDto::from));
+    }
+
+    /**
+     * Full order detail — includes items and address snapshot.
+     */
+    @GetMapping("/{id}")
+    @Transactional(readOnly = true)
+    public ResponseEntity<AdminOrderDetailDto> detail(@PathVariable UUID id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
+        return ResponseEntity.ok(AdminOrderDetailDto.from(order));
     }
 
     /**

@@ -24,4 +24,6 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     // Low-stock variants for dashboard (stockQty <= threshold)
     @Query("SELECT v FROM ProductVariant v JOIN FETCH v.product p WHERE v.stockQty <= :threshold ORDER BY v.stockQty ASC")
     List<ProductVariant> findLowStock(@Param("threshold") int threshold);
+
+    List<ProductVariant> findByProductIdOrderByWeightGramsAsc(UUID productId);
 }

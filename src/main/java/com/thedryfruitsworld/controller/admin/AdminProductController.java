@@ -2,10 +2,14 @@ package com.thedryfruitsworld.controller.admin;
 
 import com.thedryfruitsworld.entity.Category;
 import com.thedryfruitsworld.entity.Product;
+import com.thedryfruitsworld.entity.ProductImage;
+import com.thedryfruitsworld.entity.ProductVariant;
 import com.thedryfruitsworld.exception.BadRequestException;
 import com.thedryfruitsworld.exception.ResourceNotFoundException;
 import com.thedryfruitsworld.repository.CategoryRepository;
+import com.thedryfruitsworld.repository.ProductImageRepository;
 import com.thedryfruitsworld.repository.ProductRepository;
+import com.thedryfruitsworld.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -14,6 +18,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -38,6 +44,8 @@ public class AdminProductController {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final ProductVariantRepository variantRepository;
+    private final ProductImageRepository imageRepository;
 
     // -------------------------------------------------------------------------
     // READ
@@ -181,6 +189,126 @@ public class AdminProductController {
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + id));
         product.setActive(!product.isActive());
         return ResponseEntity.ok(productRepository.save(product));
+    }
+
+    // -------------------------------------------------------------------------
+    // VARIANTS
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/{id}/variants")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<ProductVariant>> listVariants(@PathVariable UUID id) {
+        productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + id));
+        return ResponseEntity.ok(variantRepository.findByProductIdOrderByWeightGramsAsc(id));
+    }
+
+    @PostMapping("/{id}/variants")
+    @Transactional
+    public ResponseEntity<ProductVariant> addVariant(
+            @PathVariable UUID id,
+            @RequestBody Map<String, Object> body
+    ) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + id));
+
+        String label = (String) body.get("label");
+        String sku = (String) body.get("sku");
+        if (label == null || label.isBlank()) throw new BadRequestException("Variant label is required");
+        if (sku == null || sku.isBlank()) throw new BadRequestException("SKU is required");
+
+        ProductVariant variant = ProductVariant.builder()
+                .product(product)
+                .label(label.trim())
+                .sku(sku.trim())
+                .weightGrams(body.get("weightGrams") != null ? ((Number) body.get("weightGrams")).intValue() : 0)
+                .price(new BigDecimal(body.get("price").toString()))
+                .mrp(new BigDecimal(body.get("mrp").toString()))
+                .stockQty(body.get("stockQty") != null ? ((Number) body.get("stockQty")).intValue() : 0)
+                .isActive(body.get("isActive") == null || Boolean.TRUE.equals(body.get("isActive")))
+                .build();
+
+        return ResponseEntity.ok(variantRepository.save(variant));
+    }
+
+    @PutMapping("/variants/{variantId}")
+    @Transactional
+    public ResponseEntity<ProductVariant> updateVariant(
+            @PathVariable UUID variantId,
+            @RequestBody Map<String, Object> body
+    ) {
+        ProductVariant variant = variantRepository.findById(variantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Variant not found: " + variantId));
+
+        if (body.get("label") != null) variant.setLabel(body.get("label").toString().trim());
+        if (body.get("sku") != null) variant.setSku(body.get("sku").toString().trim());
+        if (body.get("weightGrams") != null) variant.setWeightGrams(((Number) body.get("weightGrams")).intValue());
+        if (body.get("price") != null) variant.setPrice(new BigDecimal(body.get("price").toString()));
+        if (body.get("mrp") != null) variant.setMrp(new BigDecimal(body.get("mrp").toString()));
+        if (body.get("stockQty") != null) variant.setStockQty(((Number) body.get("stockQty")).intValue());
+        if (body.get("isActive") != null) variant.setActive(Boolean.TRUE.equals(body.get("isActive")));
+
+        return ResponseEntity.ok(variantRepository.save(variant));
+    }
+
+    @DeleteMapping("/variants/{variantId}")
+    @Transactional
+    public ResponseEntity<Void> deleteVariant(@PathVariable UUID variantId) {
+        ProductVariant variant = variantRepository.findById(variantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Variant not found: " + variantId));
+        variantRepository.delete(variant);
+        return ResponseEntity.noContent().build();
+    }
+
+    // -------------------------------------------------------------------------
+    // IMAGES
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/{id}/images")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<ProductImage>> listImages(@PathVariable UUID id) {
+        productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + id));
+        return ResponseEntity.ok(imageRepository.findByProductIdOrderBySortOrderAsc(id));
+    }
+
+    @PostMapping("/{id}/images")
+    @Transactional
+    public ResponseEntity<ProductImage> addImage(
+            @PathVariable UUID id,
+            @RequestBody Map<String, Object> body
+    ) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + id));
+
+        String url = (String) body.get("url");
+        if (url == null || url.isBlank()) throw new BadRequestException("Image URL is required");
+
+        boolean isPrimary = Boolean.TRUE.equals(body.get("isPrimary"));
+        if (isPrimary) {
+            // Clear existing primary flag
+            imageRepository.findByProductIdOrderBySortOrderAsc(id)
+                    .forEach(img -> { img.setPrimary(false); imageRepository.save(img); });
+        }
+
+        ProductImage image = ProductImage.builder()
+                .product(product)
+                .url(url.trim())
+                .alt(body.get("alt") != null ? body.get("alt").toString() : null)
+                .isPrimary(isPrimary)
+                .sortOrder(body.get("sortOrder") != null ? ((Number) body.get("sortOrder")).intValue() : 0)
+                .build();
+
+        return ResponseEntity.ok(imageRepository.save(image));
+    }
+
+    @DeleteMapping("/images/{imageId}")
+    @Transactional
+    public ResponseEntity<Void> deleteImage(@PathVariable UUID imageId) {
+        ProductImage image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Image not found: " + imageId));
+        imageRepository.delete(image);
+        return ResponseEntity.noContent().build();
     }
 
     // -------------------------------------------------------------------------
