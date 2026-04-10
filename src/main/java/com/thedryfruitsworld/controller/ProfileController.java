@@ -21,7 +21,12 @@ public class ProfileController {
     @GetMapping
     public ResponseEntity<Profile> getProfile(@AuthenticationPrincipal String userId) {
         Profile profile = profileRepository.findById(UUID.fromString(userId))
-                .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
+                .orElseGet(() -> profileRepository.save(
+                        Profile.builder()
+                                .id(UUID.fromString(userId))
+                                .role("CUSTOMER")
+                                .build()
+                ));
         return ResponseEntity.ok(profile);
     }
 
