@@ -10,6 +10,11 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=300s
+    cache-names: userRoles
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:

@@ -21,6 +21,7 @@ import java.util.List;
 public class SupabaseJwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final UserRoleCacheService userRoleCacheService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -34,7 +35,10 @@ public class SupabaseJwtFilter extends OncePerRequestFilter {
             try {
                 if (jwtUtil.isValid(token)) {
                     String userId = jwtUtil.getUserId(token);
-                    String role = jwtUtil.getRole(token);
+                    // Read role from the profiles table (single source of truth).
+                    // Result is cached for 5 min — role changes via admin panel
+                    // take effect immediately because the cache is evicted on update.
+                    String role = userRoleCacheService.getRoleForUser(userId);
 
                     var authority = new SimpleGrantedAuthority("ROLE_" + role);
                     var auth = new UsernamePasswordAuthenticationToken(
