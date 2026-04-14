@@ -36,7 +36,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/blog/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/coupons/validate").permitAll()
-                .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
                 // Admin endpoints
                 .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "MANAGER")
                 // All other endpoints require authentication
